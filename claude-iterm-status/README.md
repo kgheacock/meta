@@ -11,13 +11,13 @@ Each session reports its state in **three places in iTerm2**:
 
 | State | Emoji | Tab color | When | Extra |
 |-------|:-----:|:---------:|------|-------|
-| Working | 🟡 | amber | you submit a prompt, or a tool starts running | — |
+| Working | 🟡 | amber | you submit a prompt, or a tool finishes running | — |
 | Needs you | 🔴 | red | a permission prompt / input is waiting | Dock icon bounces |
 | Done | 🟢 | green | the turn finished | — |
 
 When you **approve** a waiting prompt, the alert clears back to 🟡 as soon as the
-tool runs (a `PreToolUse` hook) — it doesn't stay red until the turn ends. See the
-[detailed doc](./claude-iterm-status-indicator.md#why-pretooluse-exists--clearing-the-alert-after-you-approve)
+tool finishes (a `PostToolUse` hook) — it doesn't stay red until the turn ends. See
+the [detailed doc](./claude-iterm-status-indicator.md#why-posttooluse-exists--clearing-the-alert-after-you-approve)
 for why.
 
 Tabs stay renameable — the emoji and your custom name coexist. Rename with:
@@ -47,7 +47,7 @@ Full details, including how it works, how to verify, and troubleshooting, are in
 | `hooks/claude-iterm-badge.sh` | Sets the badge + tab title + tab color (and Dock bounce on 🔴) |
 | `hooks/ctab.sh` | Renames the current tab, preserving the state emoji |
 | `hooks/TERMINAL-PLAYBOOK.md` | How to detect your terminal / switch to iTerm2 |
-| `settings.json` | Registers the `UserPromptSubmit` / `PreToolUse` / `Notification` / `Stop` hooks |
+| `settings.json` | Registers the `UserPromptSubmit` / `PostToolUse` / `Notification` / `Stop` hooks |
 
 > **Fresh machine?** These scripts live only here and in `~/.claude/` (neither is a
 > git repo), so the [detailed doc](./claude-iterm-status-indicator.md) carries the

@@ -22,7 +22,7 @@ writes iTerm2 escape codes to the session's terminal:
 | Hook event        | Meaning                  | Emoji | Tab color | Script invocation                       |
 |-------------------|--------------------------|:-----:|:---------:|-----------------------------------------|
 | `UserPromptSubmit`| You sent a prompt        | 🟡    | amber     | `claude-iterm-badge.sh '🟡'`            |
-| `PreToolUse`      | A tool is about to run   | 🟡    | amber     | `claude-iterm-badge.sh '🟡'`            |
+| `PostToolUse`     | A tool finished running  | 🟡    | amber     | `claude-iterm-badge.sh '🟡'`            |
 | `Notification`    | Waiting on you           | 🔴    | red       | `claude-iterm-badge.sh '🔴' attention`  |
 | `Stop`            | Turn finished            | 🟢    | green     | `claude-iterm-badge.sh '🟢'`            |
 
@@ -40,26 +40,35 @@ The script renders the state in three independent iTerm2 surfaces:
 For the `Notification` (🔴) state the script also emits `OSC 1337
 RequestAttention=yes`, which bounces the Dock icon until the window is focused.
 
-### Why `PreToolUse` exists — clearing the alert after you approve
+### Why `PostToolUse` exists — clearing the alert after you approve
 
 The state is just "whatever the last hook wrote," and 🔴 is **sticky** — it stays
 until another hook overwrites it. `Notification` fires when a permission prompt
-*appears*, but Claude Code does **not** fire any event when you *approve* it. So
-without `PreToolUse`, the tab would stay 🔴 the whole time the session works after
-approval, only flipping to 🟢 when the turn ends — it looks stuck on "needs you"
-even though it's busy.
+*appears*. With only `UserPromptSubmit` / `Notification` / `Stop` wired, nothing
+repaints the tab after you approve, so it stays 🔴 the whole time the session works
+and only flips to 🟢 when the turn ends — it looks stuck on "needs you" even though
+it's busy.
 
-`PreToolUse` fires right after you approve, immediately before the approved tool
-runs, repainting 🔴 → 🟡. So the lifecycle is:
+The hook that clears it is `PostToolUse`, which fires when the approved tool
+**finishes** running, repainting 🔴 → 🟡. So the lifecycle is:
 
 ```
-🟡 working  →  🔴 alert (prompt shown)  →  🟡 working (approved, tool runs)  →  🟢 done
+🟡 working  →  🔴 alert (prompt shown)  →  🟡 working (tool ran)  →  🟢 done
 ```
 
-It's a plain, stateless hook (same invocation as `UserPromptSubmit`). On
-auto-approved tools it harmlessly repaints 🟡 → 🟡. A non-tool `Notification`
-(e.g. an idle "waiting for input") is correctly **not** followed by a tool, so it
-stays 🔴 until you actually type — which is what you want.
+> **Why not `PreToolUse`?** `PreToolUse` fires *before* the permission decision —
+> verified in `/tmp/claude-iterm-badge.log`, where its 🟡 lands a few seconds
+> *before* the 🔴 prompt for the same tool. So it can't clear an alert that hasn't
+> appeared yet. `PostToolUse` is the first hook that fires *after* approval, so
+> it's the one that clears the alert. (The clear happens when the approved tool
+> finishes, not at the instant you click approve — there's no hook between
+> approval and execution — but for typical sub-second tools that's effectively
+> immediate.)
+
+It's a plain, stateless hook (same invocation as `UserPromptSubmit`). On every
+tool it harmlessly repaints 🟡 → 🟡. A non-tool `Notification` (e.g. an idle
+"waiting for input") is correctly **not** followed by a tool, so it stays 🔴 until
+you actually type — which is what you want.
 
 ### Why three surfaces
 
@@ -106,7 +115,7 @@ so this doc is the canonical copy for re-creating them.
     "UserPromptSubmit": [
       { "hooks": [{ "type": "command", "command": "\"$HOME/.claude/hooks/claude-iterm-badge.sh\" '🟡'", "async": true }] }
     ],
-    "PreToolUse": [
+    "PostToolUse": [
       { "hooks": [{ "type": "command", "command": "\"$HOME/.claude/hooks/claude-iterm-badge.sh\" '🟡'", "async": true }] }
     ],
     "Notification": [
@@ -218,10 +227,10 @@ Interpret the `dev=` field:
 | `dev=NONE` or `dev=not a tty` | Hook fired but couldn't find a tty (e.g. some `--resume`/piped sessions) | Nothing to paint; run `claude` in a real iTerm2 pane |
 | (empty file) | Hooks not loading | Open `/hooks` once or restart Claude |
 
-**Alert (🔴) seems stuck after you approved a prompt?** Confirm the `PreToolUse`
+**Alert (🔴) seems stuck after you approved a prompt?** Confirm the `PostToolUse`
 hook is registered (`jq '.hooks | keys' ~/.claude/settings.json` should list it).
 Without it, 🔴 persists until `Stop` — see
-[§1 Why `PreToolUse` exists](#why-pretooluse-exists--clearing-the-alert-after-you-approve).
+[§1 Why `PostToolUse` exists](#why-posttooluse-exists--clearing-the-alert-after-you-approve).
 
 **Tab colors not changing (only the emoji)?** The color logic in
 `claude-iterm-badge.sh` matches the emojis 🟡 / 🔴 / 🟢 exactly. If your
@@ -271,7 +280,7 @@ onto a new machine (then `chmod +x`).
 # States:  🟡 working   🔴 needs you (permission / input)   🟢 done
 #
 # Wired from ~/.claude/settings.json hooks
-# (UserPromptSubmit / PreToolUse / Notification / Stop).
+# (UserPromptSubmit / PostToolUse / Notification / Stop).
 #   $1 = state emoji
 #   $2 = "attention" (optional) -> also bounce the Dock icon until the window is focused
 #
