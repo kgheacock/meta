@@ -7,6 +7,7 @@ Personal meta repo — reproducible setup for my local tooling and workflows.
 | Folder | What it is |
 |--------|------------|
 | [`claude-iterm-status/`](./claude-iterm-status/) | At-a-glance status indicator for Claude Code in iTerm2 — each session shows 🟡 working / 🔴 needs you / 🟢 done as a pane badge, tab title, and tab color. |
+| [`pr-todo-tracker/`](./pr-todo-tracker/) | Claude Code skill: commit changes, open a PR with `gh`, then keep a local plain-Markdown TODO/epic ledger in sync with the work. |
 
 ## claude-iterm-status — quick bootstrap
 
