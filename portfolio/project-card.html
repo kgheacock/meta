@@ -614,6 +614,10 @@
         }
       }
 
+      /* cards without a links nav need their own bottom padding */
+      .pcard.s-nolinks .pcard__body {
+        padding-bottom: 22px;
+      }
       .pcard__links {
         display: flex;
         flex-wrap: wrap;
@@ -822,50 +826,38 @@
           },
         },
         {
-          symbol: "URBAN",
-          name: "urban-system",
-          nameHref: "https://github.com/kheacock/urban-system",
-          role: "Personal website",
-          status: { label: "Building", dir: "work" },
+          symbol: "SFTY",
+          name: "SafetyHub",
+          role: "Law-enforcement intake portal",
+          status: { label: "Live", dir: "up" },
           blurb:
-            "A modern personal site on the Next.js App Router, built around a custom expanding-box interaction and a spare, typographic layout.",
-          board: "urban-system / stack",
-          links: [
-            { label: "Source", href: "https://github.com/kheacock/urban-system", primary: true },
-          ],
+            "PayPal's publicly accessible subpoena submission portal — where law-enforcement agencies worldwide file and track legal-process requests. A React intake front end on an Express BFF, fronting a Spring Boot service on Oracle, shipped to Kubernetes through Harness and watched end to end by Datadog.",
+          board: "safetyhub / runtime topology",
+          links: [],
           tree: {
-            icon: "nextjs",
-            label: "Next.js",
-            href: "https://github.com/kheacock/urban-system",
-            sub: "— App Router · Turbopack",
+            icon: "kubernetes",
+            label: "Kubernetes",
+            sub: "— delivery + runtime platform",
             children: [
-              { icon: "react", label: "React", sub: "— React 19 components" },
-              { icon: "tailwindcss", label: "Tailwind CSS", sub: "— utility styling" },
-              { icon: "typescript", label: "TypeScript", sub: "— strict config" },
-            ],
-          },
-        },
-        {
-          symbol: "UIBLD",
-          name: "ui-builder",
-          nameHref: "https://github.com/kheacock/ui-builder",
-          role: "Visual UI builder",
-          status: { label: "Alpha", dir: "work" },
-          blurb:
-            "A UI builder with an embedded Monaco editor and live preview — debounced edit-to-render, with application state managed through Redux Toolkit.",
-          board: "ui-builder / stack",
-          links: [
-            { label: "Source", href: "https://github.com/kheacock/ui-builder", primary: true },
-          ],
-          tree: {
-            icon: "react",
-            label: "React",
-            href: "https://github.com/kheacock/ui-builder",
-            sub: "— Create React App + TypeScript",
-            children: [
-              { icon: "monaco", label: "Monaco", sub: "— embedded code editor" },
-              { icon: "chakra", label: "Chakra UI", sub: "— component library" },
-              { icon: "redux", label: "Redux Toolkit", sub: "— application state" },
+              {
+                icon: "express",
+                label: "Express",
+                sub: "— BFF / edge gateway",
+                children: [
+                  { icon: "react", label: "React", sub: "— SPA submission portal" },
+                  { icon: "paypal", label: "PayPal Auth", sub: "— OAuth · identity" },
+                ],
+              },
+              {
+                icon: "spring",
+                label: "Spring Boot",
+                sub: "— core intake service",
+                children: [
+                  { icon: "oracle", label: "Oracle", sub: "— case + submission store" },
+                ],
+              },
+              { icon: "datadog", label: "Datadog", sub: "— metrics · logs · traces" },
+              { icon: "harness", label: "Harness", sub: "— GitOps CI/CD pipelines" },
             ],
           },
         },
@@ -894,14 +886,18 @@
         const name = p.nameHref
           ? `<a href="${p.nameHref}">${esc(p.name)}</a>`
           : esc(p.name);
-        const links = p.links
-          .map(
-            (l) =>
-              `<a${l.primary ? ' class="primary"' : ""} href="${l.href}">${esc(l.label)}</a>`,
-          )
-          .join("");
+        const hasLinks = p.links && p.links.length;
+        const links = hasLinks
+          ? p.links
+              .map(
+                (l) =>
+                  `<a${l.primary ? ' class="primary"' : ""} href="${l.href}">${esc(l.label)}</a>`,
+              )
+              .join("")
+          : "";
+        const linksNav = hasLinks ? `<nav class="pcard__links">${links}</nav>` : "";
         return `
-          <article class="pcard s-${p.status.dir}">
+          <article class="pcard s-${p.status.dir}${hasLinks ? "" : " s-nolinks"}">
             <div class="pcard__bar">
               <span class="sym" role="img" aria-label="${esc(p.symbol)}"></span>
               <span class="status is-${p.status.dir}">
@@ -925,7 +921,7 @@
                 </div>
               </div>
             </div>
-            <nav class="pcard__links">${links}</nav>
+            ${linksNav}
           </article>`;
       }
 
@@ -1075,7 +1071,8 @@
       // Measure with the viewport in auto-height mode, then lock it in.
       function fitHeight() {
         viewport.classList.remove("is-fixed");
-        const h = slides[0].offsetHeight; // tickr's natural (expanded) height
+        // lock to the tallest card so none get clipped by overflow:hidden
+        const h = Math.max(...slides.map((s) => s.offsetHeight));
         if (h) viewport.style.height = h + "px";
         viewport.classList.add("is-fixed");
       }
