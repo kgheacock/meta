@@ -1,6 +1,6 @@
 # Terminal playbook — Claude Code status badges
 
-The status badges (⏳/🔔/✅) are an **iTerm2** feature. This playbook tells you
+The status badges (🟡/🔴/🟢) are an **iTerm2** feature. This playbook tells you
 how to confirm which terminal you're in and how to get onto iTerm2 if you aren't.
 
 ---
@@ -37,7 +37,7 @@ Notes:
 Nothing to install. Just confirm the badges fire:
 
 1. Start a **fresh** `claude` session in iTerm2 (so the hooks load), send a prompt.
-2. Watch the top-right of the pane: ⏳ while working, ✅ when done, 🔔 + Dock bounce on a prompt.
+2. Watch the top-right of the pane: 🟡 while working, 🟢 when done, 🔴 + Dock bounce on a prompt.
 3. If you don't see it, check the hook actually reached the terminal:
    ```bash
    cat /tmp/claude-iterm-badge.log
@@ -88,6 +88,6 @@ the tmux route, that's a different, dashboard-style setup — ask and I'll wire 
 ---
 
 ## Files involved
-- `~/.claude/hooks/claude-iterm-badge.sh` — sets the badge (and Dock bounce on 🔔)
-- `~/.claude/settings.json` — `hooks.UserPromptSubmit / Notification / Stop`
-- `/tmp/claude-iterm-badge.log` — diagnostic log (safe to delete once verified)
+- `~/.claude/hooks/claude-iterm-badge.sh` — sets the badge (and Dock bounce on 🔴)
+- `~/.claude/settings.json` — `hooks.UserPromptSubmit / PostToolUse / Notification / Stop`
+- `/tmp/claude-iterm-badge.log` — diagnostic log, off by default (enable with `CLAUDE_BADGE_DEBUG=1`)

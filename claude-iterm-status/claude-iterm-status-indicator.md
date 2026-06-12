@@ -99,9 +99,10 @@ All paths are under `~/.claude/`:
 | Path | Role |
 |------|------|
 | `hooks/claude-iterm-badge.sh` | Writes badge + tab title + tab color; bounces Dock on 🔴. Resolves the tab device, the label, and persists the last state. |
+| `hooks/claude-iterm-reset.sh` | Clears this tty's stale `.label`/`.state` at session start, so a reused tty doesn't inherit a previous session's name. |
 | `hooks/ctab.sh` | Renames the current tab and repaints immediately, preserving the emoji. |
 | `hooks/TERMINAL-PLAYBOOK.md` | How to detect your current terminal and switch to iTerm2. |
-| `settings.json` | Registers the four hooks (user scope → applies to every project). |
+| `settings.json` | Registers the hooks (user scope → applies to every project). |
 
 Full source for the two scripts is in the
 [Appendix](#appendix-full-script-source) — they live only here and in `~/.claude`,
@@ -112,6 +113,9 @@ so this doc is the canonical copy for re-creating them.
 ```json
 {
   "hooks": {
+    "SessionStart": [
+      { "matcher": "startup", "hooks": [{ "type": "command", "command": "\"$HOME/.claude/hooks/claude-iterm-reset.sh\"", "async": true }] }
+    ],
     "UserPromptSubmit": [
       { "hooks": [{ "type": "command", "command": "\"$HOME/.claude/hooks/claude-iterm-badge.sh\" '🟡'", "async": true }] }
     ],
@@ -145,8 +149,8 @@ this file:
    the [Appendix](#appendix-full-script-source), then make them executable:
    ```bash
    mkdir -p ~/.claude/hooks
-   # paste claude-iterm-badge.sh and ctab.sh from the Appendix, then:
-   chmod +x ~/.claude/hooks/claude-iterm-badge.sh ~/.claude/hooks/ctab.sh
+   # paste claude-iterm-badge.sh, claude-iterm-reset.sh, and ctab.sh from the Appendix, then:
+   chmod +x ~/.claude/hooks/claude-iterm-badge.sh ~/.claude/hooks/claude-iterm-reset.sh ~/.claude/hooks/ctab.sh
    ```
 3. **Register the hooks** by merging the `"hooks"` block above into
    `~/.claude/settings.json` (create the file if it doesn't exist).
@@ -212,8 +216,9 @@ iTerm2 → **Settings → Profiles → General → Badge** (size) and
 
 ## 5. Verifying / troubleshooting
 
-A diagnostic line in `claude-iterm-badge.sh` logs every invocation to
-`/tmp/claude-iterm-badge.log`:
+A diagnostic line in `claude-iterm-badge.sh` can log every invocation to
+`/tmp/claude-iterm-badge.log`. It's **off by default**; enable it by launching
+`claude` with `CLAUDE_BADGE_DEBUG=1` in the environment, then:
 
 ```bash
 cat /tmp/claude-iterm-badge.log
@@ -244,8 +249,8 @@ Other checks:
   you add `set -g allow-passthrough on` to `~/.tmux.conf` (and wrap sequences).
   Simplest is to run `claude` in iTerm2 directly.
 
-Once verified, the diagnostic `echo` line in `claude-iterm-badge.sh` (and the
-`/tmp/claude-iterm-badge.log` file) can be removed.
+The diagnostic log is gated behind `CLAUDE_BADGE_DEBUG`, so once you've verified
+everything works just unset it (the default) and delete `/tmp/claude-iterm-badge.log`.
 
 ---
 
@@ -260,13 +265,15 @@ The scripts use small per-terminal files in `/tmp`, keyed by the tty name
 | `/tmp/claude-tab-<tty>.state` | `claude-iterm-badge.sh` | Last state emoji, so `ctab.sh` can repaint correctly |
 | `/tmp/claude-iterm-badge.log` | `claude-iterm-badge.sh` | Diagnostic log (safe to delete) |
 
-These are ephemeral and recreated as needed.
+These are ephemeral and recreated as needed. At each new session, `claude-iterm-reset.sh`
+(the `SessionStart` hook) deletes this tty's `.label` and `.state` so a recycled tty
+number doesn't inherit the previous session's custom name.
 
 ---
 
 ## Appendix: full script source
 
-These two scripts live only in `~/.claude/hooks/` and here. Copy them verbatim
+These scripts live only in `~/.claude/hooks/` and here. Copy them verbatim
 onto a new machine (then `chmod +x`).
 
 ### `~/.claude/hooks/claude-iterm-badge.sh`
@@ -322,8 +329,10 @@ fi
 [ -n "$key" ] && printf '%s' "$emoji" > "/tmp/claude-tab-${key}.state" 2>/dev/null
 
 # Diagnostic log — confirms the hook fired AND whether it found a usable tty.
-# Remove this line (and the log file) once you've verified everything works.
-echo "$(date '+%H:%M:%S') emoji=${emoji} label=${label} mode=${mode:-none} dev=${dev:-NONE} term=${TERM_PROGRAM:-?}" >> /tmp/claude-iterm-badge.log
+# Off by default; enable by launching `claude` with CLAUDE_BADGE_DEBUG=1 in the env.
+if [ -n "${CLAUDE_BADGE_DEBUG:-}" ]; then
+  echo "$(date '+%H:%M:%S') emoji=${emoji} label=${label} mode=${mode:-none} dev=${dev:-NONE} term=${TERM_PROGRAM:-?}" >> /tmp/claude-iterm-badge.log
+fi
 
 # Build escape sequences:
 #   OSC 1337 SetBadgeFormat  -> pane badge (base64 value)
@@ -406,4 +415,37 @@ b64="$(printf '%s' "$emoji" | base64 | tr -d '\n')"
 printf '\033]1337;SetBadgeFormat=%s\007\033]0;%s %s\007' "$b64" "$emoji" "$label" > "$dev" 2>/dev/null
 
 echo "ctab: this tab is now \"$label\""
+```
+
+### `~/.claude/hooks/claude-iterm-reset.sh`
+
+```bash
+#!/usr/bin/env bash
+# Clears stale per-terminal state for THIS tty so a brand-new Claude Code session
+# doesn't inherit a label/state left behind by a previous session on the same tty.
+#
+# macOS reuses tty numbers (ttys028, ...), and the status files in /tmp are keyed
+# by tty name — so without this a recycled tty would show the old session's custom
+# `ctab.sh` name. Wired from ~/.claude/settings.json as a SessionStart (startup)
+# hook, so it only fires for genuinely new sessions, not resume/clear/compact.
+
+# Resolve this terminal's device + key (same scheme as claude-iterm-badge.sh):
+# prefer the hook's own controlling tty, fall back to the parent (claude) tty.
+dev="$(tty 2>/dev/null)"
+case "$dev" in
+  /dev/*) : ;;
+  *)
+    pt="$(ps -o tty= -p "$PPID" 2>/dev/null | tr -d ' ')"
+    if [ -n "$pt" ] && [ "$pt" != "?" ] && [ "$pt" != "??" ]; then
+      if [ -e "/dev/$pt" ]; then dev="/dev/$pt"
+      elif [ -e "/dev/tty$pt" ]; then dev="/dev/tty$pt"
+      fi
+    fi
+    ;;
+esac
+key="$(basename "$dev" 2>/dev/null)"
+
+# Nothing to clear if we couldn't resolve a tty (e.g. piped/--resume sessions).
+[ -n "$key" ] && [ "$key" != "/" ] && rm -f "/tmp/claude-tab-${key}.label" "/tmp/claude-tab-${key}.state"
+exit 0
 ```

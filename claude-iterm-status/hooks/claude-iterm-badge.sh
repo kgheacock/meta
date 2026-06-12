@@ -47,8 +47,10 @@ fi
 [ -n "$key" ] && printf '%s' "$emoji" > "/tmp/claude-tab-${key}.state" 2>/dev/null
 
 # Diagnostic log — confirms the hook fired AND whether it found a usable tty.
-# Remove this line (and the log file) once you've verified everything works.
-echo "$(date '+%H:%M:%S') emoji=${emoji} label=${label} mode=${mode:-none} dev=${dev:-NONE} term=${TERM_PROGRAM:-?}" >> /tmp/claude-iterm-badge.log
+# Off by default; enable by launching `claude` with CLAUDE_BADGE_DEBUG=1 in the env.
+if [ -n "${CLAUDE_BADGE_DEBUG:-}" ]; then
+  echo "$(date '+%H:%M:%S') emoji=${emoji} label=${label} mode=${mode:-none} dev=${dev:-NONE} term=${TERM_PROGRAM:-?}" >> /tmp/claude-iterm-badge.log
+fi
 
 # Build escape sequences:
 #   OSC 1337 SetBadgeFormat  -> pane badge (base64 value)

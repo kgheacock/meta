@@ -45,9 +45,15 @@ Full details, including how it works, how to verify, and troubleshooting, are in
 | Path | Purpose |
 |------|---------|
 | `hooks/claude-iterm-badge.sh` | Sets the badge + tab title + tab color (and Dock bounce on 🔴) |
+| `hooks/claude-iterm-reset.sh` | Clears stale per-tty label/state at session start (so reused ttys don't inherit an old name) |
 | `hooks/ctab.sh` | Renames the current tab, preserving the state emoji |
 | `hooks/TERMINAL-PLAYBOOK.md` | How to detect your terminal / switch to iTerm2 |
-| `settings.json` | Registers the `UserPromptSubmit` / `PostToolUse` / `Notification` / `Stop` hooks |
+| `settings.json` | Registers the `SessionStart` / `UserPromptSubmit` / `PostToolUse` / `Notification` / `Stop` hooks |
+
+> **Where the hook config lives in this repo.** The runtime registration is in
+> `~/.claude/settings.json` (above). In *this repo* that block ships as a standalone
+> `settings.hooks.json`, which `install.sh` merges into `~/.claude/settings.json`
+> (creating it if needed, preserving any existing settings).
 
 > **Fresh machine?** These scripts live only here and in `~/.claude/` (neither is a
 > git repo), so the [detailed doc](./claude-iterm-status-indicator.md) carries the

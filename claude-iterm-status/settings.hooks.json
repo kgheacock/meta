@@ -1,5 +1,17 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/claude-iterm-reset.sh\"",
+            "async": true
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "hooks": [

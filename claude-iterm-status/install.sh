@@ -19,9 +19,10 @@ command -v jq >/dev/null 2>&1 || { echo "error: jq is required (brew install jq)
 echo "==> Installing hook scripts into $HOOKS_DEST"
 mkdir -p "$HOOKS_DEST"
 cp "$SRC/hooks/claude-iterm-badge.sh" "$HOOKS_DEST/"
+cp "$SRC/hooks/claude-iterm-reset.sh" "$HOOKS_DEST/"
 cp "$SRC/hooks/ctab.sh"               "$HOOKS_DEST/"
 cp "$SRC/hooks/TERMINAL-PLAYBOOK.md"  "$HOOKS_DEST/"
-chmod +x "$HOOKS_DEST/claude-iterm-badge.sh" "$HOOKS_DEST/ctab.sh"
+chmod +x "$HOOKS_DEST/claude-iterm-badge.sh" "$HOOKS_DEST/claude-iterm-reset.sh" "$HOOKS_DEST/ctab.sh"
 
 echo "==> Merging hook config into $SETTINGS"
 mkdir -p "$(dirname "$SETTINGS")"
