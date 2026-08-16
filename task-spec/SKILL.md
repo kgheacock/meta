@@ -168,7 +168,8 @@ definition of done is empty. Run Mode 3 first.
 Use this mode when the user asks to review, verify, or close a task. Act as
 the outside reviewer. The implementer's report is not evidence.
 
-1. Read the spec in `tasks/ongoing/`.
+1. Read the spec. It is in `tasks/ongoing/`, unless the `task-implement`
+   skill already ticked every item and moved it to `tasks/complete/`.
 2. Read the diff: `git diff main...HEAD`, or the diff of the PR in the `pr`
    field.
 3. For each item in the definition of done, run its proof. Record one of three

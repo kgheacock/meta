@@ -4,10 +4,12 @@ version: 1.0.0
 description: |
   Deliver a task spec written by the task-spec skill: check out or create its
   branch, move the spec from tasks/backlog to tasks/ongoing, push the branch
-  upstream, implement the task, then raise a pull request to main that links
-  back to the spec, and push that link into the spec on the same branch. Use
-  when the user says "implement task NNNN", "start task NNNN", "deliver this
-  task", "pick up task NNNN", "work the spec", or "raise a PR for task NNNN".
+  upstream, implement the task, tick each Definition of done item you can
+  confirm, then raise a pull request to main that links back to the spec,
+  push that link into the spec on the same branch, and move the spec to
+  tasks/complete once every item is ticked. Use when the user says
+  "implement task NNNN", "start task NNNN", "deliver this task", "pick up
+  task NNNN", "work the spec", or "raise a PR for task NNNN".
 license: MIT
 compatibility: claude-code cursor codex gemini-cli opencode
 metadata:
@@ -106,9 +108,13 @@ usual style.
 ## Step 5 — Check the definition of done
 
 Compare your diff (`git diff main...HEAD`) against every item in the spec's
-Definition of done. Do not tick the boxes yet — that is the outside
-reviewer's job, under the task-spec skill's Mode 3. This check exists to
-catch a gap before the reviewer does.
+Definition of done. For each item, run its proof.
+
+- If the proof confirms the item, tick its box (`- [ ]` → `- [x]`).
+- If it does not, leave the box empty and add a one-line note under the item
+  that states what is missing.
+
+Commit this change with the rest of your work, before Step 6.
 
 ## Step 6 — Raise the pull request to main
 
@@ -132,11 +138,23 @@ Set this frontmatter field:
 
 - `pr:` the PR URL from Step 6
 
+Check the Definition of done section you ticked in Step 5.
+
+| Condition | Also do this |
+|---|---|
+| Every box is ticked | Move the spec to `tasks/complete/` and set `status: "complete"` and `updated:` today's date, `YYYY-MM-DD` |
+| One or more boxes are still empty | Leave the spec in `tasks/ongoing/`; `status` stays `"ongoing"` |
+
+```bash
+# only when every Definition of done box is ticked
+git mv tasks/ongoing/NNNN-kebab-title.md tasks/complete/
+```
+
 Commit and push this change on the same branch. This step adds a commit to
 the open pull request. It does not open a new one.
 
 ```bash
-git add tasks/ongoing/NNNN-kebab-title.md
+git add tasks/
 git commit -m "Link PR #<number> in NNNN task spec"
 git push
 ```
@@ -147,15 +165,17 @@ Tell the user:
 
 - the pull request URL
 - the branch name
-- that the spec now records the PR link
-- any Definition of done item that Step 5 could not confirm
+- whether the spec moved to `tasks/complete/`, or stayed in `tasks/ongoing/`
+- any Definition of done item that Step 5 could not confirm, and why
 
 ## What this skill does not do
 
 - It does not write the implementation. Step 4 defers to the spec and to
   normal engineering judgment.
-- It does not move the spec to `tasks/complete/`. That move belongs to the
-  task-spec skill, Mode 2, after Mode 3's review and usually after merge.
+- It does not give an independent review. The ticks in Step 5 and the move
+  in Step 7 are the implementer's own check, run against the diff. Anyone
+  who wants a check from someone other than the implementer still runs the
+  task-spec skill's Mode 3 against the merged PR.
 - It does not merge the pull request.
 
 ## Prerequisites and safety
@@ -167,5 +187,7 @@ Tell the user:
 
 ## References
 
-- The `task-spec` skill defines the spec file format, the folder-as-status
-  rule, and Mode 3's review process for ticking Definition of done boxes.
+- The `task-spec` skill defines the spec file format and the folder-as-status
+  rule. Its Mode 3 gives an independent review of a spec already marked
+  complete, for anyone who does not want to trust the implementer's own
+  ticks from Step 5.
